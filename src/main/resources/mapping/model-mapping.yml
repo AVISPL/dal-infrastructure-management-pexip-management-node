@@ -1,0 +1,257 @@
+models:
+  - model:
+      name: generic
+      vendor: Pexip
+      node: objects
+      filter: get("id")!=null
+      mapping:
+        deviceType: "MCU"
+        type: "Infrastructure"
+        category: "MCU"
+        serialNumber: get("name")
+        deviceId: get("resource_uri")
+        deviceName: get("name")
+        deviceMake: "Pexip"
+        deviceModel: "Pexip Conferencing Node"
+        deviceOnline: "true"
+      #dynamicStatistics:
+      properties:
+        General#MaxAudioCalls: get("max_audio_calls")
+        General#MaxFullHDCalls: get("max_full_hd_calls")
+        General#MaxHDCalls: get("max_hd_calls")
+        General#MaxMediaTokens: get("max_media_tokens")
+        General#MaxSDCalls: get("max_sd_calls")
+        General#MediaLoad: get("media_load")
+        General#MediaTokensUsed: get("media_tokens_used")
+        General#TotalRam: get("total_ram")
+        General#SignalingCount: get("signaling_count")
+        General#BootTime: get("boot_time")
+        General#ConfigurationId: get("configuration_id")
+        General#CPUCapabilities: get("cpu_capabilities")
+        General#CPUCount: get("cpu_count")
+        General#CPUModel: get("cpu_model")
+        General#DeployError: get("deploy_error")
+        General#DeployProgress: get("deploy_progress")
+        General#DeployStatus: get("deploy_status")
+        General#Hypervisor: get("hypervisor")
+        General#LastReported: get("last_reported")
+        General#LastUpdated: get("last_updated")
+        General#MaintenanceMode: get("maintenance_mode")
+        General#NodeType: get("node_type")
+        General#SystemLocation: get("system_location")
+        General#UpgradeStatus: get("upgrade_status")
+        General#Version: get("version")
+  - model:
+      name: NodeLicensing
+      model: NodeLicensing
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        Licensing#AudioCount: get("audio_count")
+        Licensing#AudioTotal: get("audio_total")
+        Licensing#GoogleMeetCount: get("ghm_count")
+        Licensing#GoogleMeetTotal: get("ghm_total")
+        Licensing#OneTouchJoinCount: get("otj_count")
+        Licensing#OneTouchJoinTotal: get("otj_total")
+        Licensing#PortCount: get("port_count")
+        Licensing#PortTotal: get("port_total")
+        Licensing#SchedulingCount: get("scheduling_count")
+        Licensing#SchedulingTotal: get("scheduling_total")
+        Licensing#SystemCount: get("system_count")
+        Licensing#SystemTotal: get("system_total")
+        Licensing#TeamsCount: get("teams_count")
+        Licensing#TeamsTotal: get("teams_total")
+        Licensing#VMRCount: get("vmr_count")
+        Licensing#VMRTotal: get("vmr_total")
+  - model:
+      name: NodeLicensingReport
+      model: NodeLicensingReport
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        AudioCount: get("audio_count")
+        AudioTotal: get("audio_total")
+        GoogleMeetCount: get("ghm_count")
+        GoogleMeetTotal: get("ghm_total")
+        OneTouchJoinCount: get("otj_count")
+        OneTouchJoinTotal: get("otj_total")
+        PortCount: get("port_count")
+        PortTotal: get("port_total")
+        SchedulingCount: get("scheduling_count")
+        SchedulingTotal: get("scheduling_total")
+        SystemCount: get("system_count")
+        SystemTotal: get("system_total")
+        TeamsCount: get("teams_count")
+        TeamsTotal: get("teams_total")
+        VMRCount: get("vmr_count")
+        VMRTotal: get("vmr_total")
+  - model:
+      name: ConferenceStatus
+      model: ConferenceStatus
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        GuestsMuted: get("guests_muted")
+        ID: get("id")
+        IsLocked: get("is_locked")
+        IsStarted: get("is_started")
+        Name: get("name")
+        ResourceURI: get("resource_uri")
+        ServiceType: get("service_type")
+        StartTime: get("start_time")
+        Tag: get("tag")
+  - model:
+      name: ConferenceHistoricalReportStats
+      model: ConferenceHistoricalReportStats
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        Duration: get("duration")
+        EndTime: get("end_time")
+        ID: get("id")
+        InstantMessageCount: get("instant_message_count")
+        ParticipantCount: get("participant_count")
+        Participants: get("participants").asText()
+        ResourceURI: get("resource_uri")
+        ServiceType: get("service_type")
+        StartTime: get("start_time")
+        Tag: get("tag")
+  - model:
+      name: ParticipantHistoricalReportStats
+      model: ParticipantHistoricalReportStats
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        AVID: get("av_id")
+        Bandwidth: get("bandwidth")
+        CallDirection: get("call_direction")
+        CallUUID: get("call_uuid")
+        Conference: get("conference")
+        ConferenceName: get("conference_name")
+        ConversationID: get("conversation_id")
+        DisconnectReason: get("disconnect_reason")
+        DisplayName: get("display_name")
+        Duration: get("duration")
+        Encryption: get("encryption")
+        EndTime: get("end_time")
+        HasMedia: get("has_media")
+        ID: get("id")
+        IsStreaming: get("is_streaming")
+        LicenseCount: get("license_count")
+        LicenseType: get("license_type")
+        LocalAlias: get("local_alias")
+        MediaNode: get("media_node")
+        ParentID: get("parent_id")
+        PresentationID: get("presentation_id")
+        Protocol: get("protocol")
+        ProxyNode: get("proxy_node")
+        RemoteAddress: get("remote_address")
+        RemoteAlias: get("remote_alias")
+        RemotePort: get("remote_port")
+        ResourceURI: get("resource_uri")
+        Role: get("role")
+        RxBandwidth: get("rx_bandwidth")
+        ServiceTag: get("service_tag")
+        ServiceType: get("service_type")
+        SignallingNode: get("signalling_node")
+        StartTime: get("start_time")
+        SystemLocation: get("system_location")
+        TxBandwidth: get("tx_bandwidth")
+        Vendor: get("vendor")
+  - model:
+      name: ConferenceShard
+      model: ConferenceShard
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        Name: get("conference")
+        NodeAddress: get("node")
+        SystemLocation: get("system_location")
+  - model:
+      name: ParticipantHistorical
+      model: ParticipantHistorical
+      vendor: Pexip
+      filter: false
+      mapping:
+      statistics:
+  - model:
+      name: Participant
+      model: Participant
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        #participantHistorical
+        Bandwidth: get("bandwidth")
+        CallQuality: get("call_quality")
+        RxBandwidth: get("rx_bandwidth")
+        TxBandwidth: get("tx_bandwidth")
+        #participantHistorical
+        CallDirection: get("call_direction")
+        CallUUID: get("call_uuid")
+        Conference: get("conference")
+        ConnectTime: get("connect_time")
+        ConversationID: get("conversation_id")
+        DestinationAlias: get("destination_alias")
+        DisplayName: get("display_name")
+        Encryption: get("encryption")
+        HasMedia: get("has_media")
+        ID: get("id")
+        IsDisconnectSupported: get("is_disconnect_supported")
+        IsMuteSupported: get("is_mute_supported")
+        IsMuted: get("is_muted")
+        IsOnHold: get("is_on_hold")
+        IsPresentationSupported: get("is_presentation_supported")
+        IsPresenting: get("is_presenting")
+        IsRecording: get("is_recording")
+        IsStreaming: get("is_streaming")
+        IsTransferSupported: get("is_transfer_supported")
+        LicenceCount: get("licence_count")
+        LicenceType: get("licence_type")
+        MediaNode: get("media_node")
+        ParentID: get("parent_id")
+        ParticipantAlias: get("participant_alias")
+        Protocol: get("protocol")
+        ProxyNode: get("proxy_node")
+        RemoteAddress: get("remote_address")
+        RemotePort: get("remote_port")
+        Role: get("role")
+        ServiceTag: get("service_tag")
+        ServiceType: get("service_type")
+        SignallingNode: get("signalling_node")
+        SourceAlias: get("source_alias")
+        SystemLocation: get("system_location")
+        Vendor: get("vendor")
+  - model:
+      name: ConferencingNodesConfig
+      model: ConferencingNodesConfig
+      vendor: Pexip
+      filter: false
+      mapping:
+      properties:
+        Configuration#ID: get("id")
+        Configuration#NodeAddress: get("address")
+        Configuration#AlternativeFQDN: get("alternative_fqdn")
+        Configuration#CloudBursting: get("cloud_bursting")
+        Configuration#Domain: get("domain")
+        Configuration#EnableDistributedDatabase: get("enable_distributed_database")
+        Configuration#EnableSSH: get("enable_ssh")
+        Configuration#Gateway: get("gateway")
+        Configuration#Hostname: get("hostname")
+        Configuration#IPv6Address: get("ipv6_address")
+        Configuration#IPv6Gateway: get("ipv6_gateway")
+        Configuration#MaintenanceMode: get("maintenance_mode")
+        Configuration#Managed: get("managed")
+        Configuration#Name: get("name")
+        Configuration#Netmask: get("netmask")
+        Configuration#NodeType: get("node_type")
+        Configuration#SNMPMode: get("snmp_mode")
+        Configuration#SNMPSystemContact: get("snmp_system_contact")
+        Configuration#SNMPSystemLocation: get("snmp_system_location")
+        Configuration#Transcoding: get("transcoding")
