@@ -40,7 +40,7 @@ public class PexipManagementNodeTest {
         Assert.assertNotNull(devices.get(0));
         Assert.assertEquals("CHI-SRV-PEXIP-CONF05", devices.get(0).getProperties().get("Configuration#Hostname"));
         Assert.assertEquals("CHI-SRV-PEXIP-CONF05", devices.get(0).getProperties().get("Configuration#Name"));
-        Assert.assertEquals("vnoc1.chicago", devices.get(0).getProperties().get("General#Name"));
+        Assert.assertEquals("vnoc1.chicago", devices.get(0).getProperties().get("Configuration#Domain"));
     }
 
     @Test
