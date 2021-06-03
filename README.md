@@ -1,2 +1,2 @@
-# dal-codecs-singlecodecs-pexip-management-node
+# dal-infrastructure-management-pexip-management-node
 DAL adapter for Pexip Management Node
