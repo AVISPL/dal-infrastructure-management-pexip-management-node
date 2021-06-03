@@ -1,8 +1,19 @@
-package com.avispl.dal.communicator.dto.entities;
+/*
+ * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ */
+package com.avispl.dal.communicator.dto.reports;
 
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Report wrapper, created for transferring multiple Map entries, related to a single report, along with the
+ * report name. Created mainly for future use in csv generation process.
+ *
+ * @author Maksym.Rossiytsev / Symphony Dev Team<br>
+ * @since 1.0
+ * Created June 1, 2021
+ */
 public class ReportWrapper {
     private String reportName;
     private List<Map<String, String>> report;

@@ -1,8 +1,15 @@
-package com.avispl.dal.communicator.dto.conferences;
+package com.avispl.dal.communicator.dto.api.conferences;
 
-import com.avispl.dal.communicator.dto.entities.BaseResponseEntity;
+import com.avispl.dal.communicator.dto.api.entities.BaseResponseEntity;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * A basic representation of a Conference entity from Pexip Management Node
+ *
+ * @author Maksym.Rossiytsev / Symphony Dev Team<br>
+ * @since 1.0
+ * Created June 1, 2021
+ */
 public class Conference extends BaseResponseEntity {
     @JsonProperty("duration")
     private int duration;

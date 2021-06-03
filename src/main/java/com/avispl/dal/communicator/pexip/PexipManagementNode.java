@@ -1,8 +1,11 @@
+/*
+ * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.dal.communicator.pexip;
 
-import com.avispl.dal.communicator.dto.entities.ReportWrapper;
-import com.avispl.dal.communicator.dto.entities.ManagementNodeResponse;
-import com.avispl.dal.communicator.dto.conferences.Conference;
+import com.avispl.dal.communicator.dto.reports.ReportWrapper;
+import com.avispl.dal.communicator.dto.api.entities.ManagementNodeResponse;
+import com.avispl.dal.communicator.dto.api.conferences.Conference;
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
