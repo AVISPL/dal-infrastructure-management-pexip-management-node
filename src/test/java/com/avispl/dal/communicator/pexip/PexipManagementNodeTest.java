@@ -1,8 +1,16 @@
 package com.avispl.dal.communicator.pexip;
 
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
+import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
+import com.avispl.symphony.api.dal.dto.monitor.Statistics;
+import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.List;
+import java.util.Map;
 
 public class PexipManagementNodeTest {
     private PexipManagementNode pexipManagementNode;
@@ -14,25 +22,46 @@ public class PexipManagementNodeTest {
         pexipManagementNode.setPort(443);
         pexipManagementNode.setLogin("admin");
         pexipManagementNode.setPassword("***REMOVED***");
+
+        pexipManagementNode.setSmtpPort(25);
+        pexipManagementNode.setSmtpHost("172.31.11.188");
+        pexipManagementNode.setSmtpPassword("$uPP0rt16");
+        pexipManagementNode.setSmtpSender("noreply@avispl.com");
+        pexipManagementNode.setSmtpUsername("notifications@vnocsymphony.com");
+        pexipManagementNode.setEmailReportsRecipients("max@rossiytsev.com");
         pexipManagementNode.init();
     }
 
     @Test
     public void testRetrieveMultipleStatistics() throws Exception {
         pexipManagementNode.setDisplayConferencesStatistics(true);
-        pexipManagementNode.retrieveMultipleStatistics();
-    }
+        List<AggregatedDevice> devices = pexipManagementNode.retrieveMultipleStatistics();
 
+        Assert.assertNotNull(devices.get(0));
+        Assert.assertEquals("CHI-SRV-PEXIP-CONF05", devices.get(0).getProperties().get("Configuration#Hostname"));
+        Assert.assertEquals("CHI-SRV-PEXIP-CONF05", devices.get(0).getProperties().get("Configuration#Name"));
+        Assert.assertEquals("vnoc1.chicago", devices.get(0).getProperties().get("General#Name"));
+    }
 
     @Test
     public void testGetMultipleStatistics() throws Exception {
-        pexipManagementNode.getMultipleStatistics();
+        List<Statistics> stats = pexipManagementNode.getMultipleStatistics();
+        ExtendedStatistics extendedStatistics = (ExtendedStatistics) stats.get(0);
+        Map<String, String> statisticsMap = extendedStatistics.getStatistics();
+        Map<String, String> dynamicStatisticsMap = extendedStatistics.getDynamicStatistics();
+        List<AdvancedControllableProperty> controls = extendedStatistics.getControllableProperties();
+
+        Assert.assertEquals(4, controls.size());
+        Assert.assertEquals("1.0.0-SNAPSHOT", statisticsMap.get("AdapterVersion"));
+        Assert.assertEquals("", statisticsMap.get("Export#DaysBack"));
+        Assert.assertEquals("", statisticsMap.get("Export#HistoricalReport"));
+        Assert.assertEquals("", statisticsMap.get("Export#LicensingReport"));
+        Assert.assertEquals("", statisticsMap.get("Export#TotalStatistics"));
+        Assert.assertEquals("65", dynamicStatisticsMap.get("Licensing#PortTotal"));
     }
 
     @Test
     public void testSendHistoricalReports() throws Exception {
-        pexipManagementNode.setEmailReportsRecipients("max@rossiytsev.com");
-
         ControllableProperty daysBackControl = new ControllableProperty();
         daysBackControl.setValue(10);
         daysBackControl.setProperty("Export#DaysBack");
@@ -46,8 +75,6 @@ public class PexipManagementNodeTest {
 
     @Test
     public void testSendTotalStatisticsReports() throws Exception {
-        pexipManagementNode.setEmailReportsRecipients("max@rossiytsev.com");
-
         ControllableProperty sendReportsControl = new ControllableProperty();
         sendReportsControl.setProperty("Export#TotalStatistics");
 
@@ -72,7 +99,6 @@ public class PexipManagementNodeTest {
         // Stuff to enrich caches and known participants/conferences maps
         pexipManagementNode.retrieveMultipleStatistics();
         pexipManagementNode.getMultipleStatistics();
-        pexipManagementNode.setEmailReportsRecipients("max@rossiytsev.com");
         ControllableProperty export = new ControllableProperty();
         export.setProperty("Conference:Symphony_625_3075558_LH Pexip MCU#ExportParticipants");
         pexipManagementNode.controlProperty(export);
