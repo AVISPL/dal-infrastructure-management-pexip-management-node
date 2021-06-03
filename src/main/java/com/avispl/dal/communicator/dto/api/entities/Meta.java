@@ -1,7 +1,17 @@
-package com.avispl.dal.communicator.dto.entities;
+/*
+ * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ */
+package com.avispl.dal.communicator.dto.api.entities;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * A basic representation of metadata part of Management Node responses
+ *
+ * @author Maksym.Rossiytsev / Symphony Dev Team<br>
+ * @since 1.0
+ * Created June 1, 2021
+ */
 public class Meta {
     private Integer limit;
     private String next;
