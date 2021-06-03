@@ -38,7 +38,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -82,10 +81,10 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     */
 
     private static int smtpPort = 25;
-    private static String smtpHost = "172.31.11.188";
-    private static String smtpUsername = "notifications@vnocsymphony.com";
-    private static String smtpPassword = "$uPP0rt16";
-    private static String smtpSender = "noreply@avispl.com";
+    private static String smtpHost = "";
+    private static String smtpUsername = "";
+    private static String smtpPassword = "";
+    private static String smtpSender = "";
 
     private int daysBackReports = 1;
     private boolean displayConferencesStatistics = false;
@@ -391,54 +390,54 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         List<Conference> conferencesLastMonth = doGet(String.format(HISTORICAL_CONFERENCE_URI, RESPONSE_LIMIT, previousMonthStart, currentMonthStart),
                 new ParameterizedTypeReference<ManagementNodeResponse<Conference>>() {}).getObjects();
 
-        AtomicInteger totalDailyDuration = new AtomicInteger(0);
-        AtomicInteger totalMonthlyDuration = new AtomicInteger(0);
-        AtomicInteger totalPreviousMonthDuration = new AtomicInteger(0);
-        AtomicInteger participantsDailyCount = new AtomicInteger(0);
-        AtomicInteger participantsMonthlyCount = new AtomicInteger(0);
-        AtomicInteger participantsPreviousMonthCount = new AtomicInteger(0);
+        int totalDailyDuration = 0;
+        int totalMonthlyDuration = 0;
+        int totalPreviousMonthDuration = 0;
+        int participantsDailyCount = 0;
+        int participantsMonthlyCount = 0;
+        int participantsPreviousMonthCount = 0;
 
         int conferencesDailyCount = conferencesDaily.size();
         int conferencesMonthlyCount = conferencesMonthly.size();
         int conferencesPreviousMonthCount = conferencesLastMonth.size();
 
-        conferencesDaily.forEach(node -> {
-            totalDailyDuration.addAndGet(node.getDuration());
-            participantsDailyCount.addAndGet(node.getParticipantCount());
-        });
+        for(Conference node: conferencesDaily) {
+            totalDailyDuration += node.getDuration();
+            participantsDailyCount += node.getParticipantCount();
+        }
 
-        conferencesMonthly.forEach(node -> {
-            totalMonthlyDuration.addAndGet(node.getDuration());
-            participantsMonthlyCount.addAndGet(node.getParticipantCount());
-        });
+        for(Conference node: conferencesMonthly) {
+            totalMonthlyDuration += node.getDuration();
+            participantsMonthlyCount += node.getParticipantCount();
+        }
 
-        conferencesLastMonth.forEach(node -> {
-            totalPreviousMonthDuration.addAndGet(node.getDuration());
-            participantsPreviousMonthCount.addAndGet(node.getParticipantCount());
-        });
+        for(Conference node: conferencesLastMonth) {
+            totalPreviousMonthDuration += node.getDuration();
+            participantsPreviousMonthCount += node.getParticipantCount();
+        }
 
-        Integer averageDurationDaily = safeDivision(totalDailyDuration.get(),conferencesDailyCount);
-        Integer averageDurationMonthly = safeDivision(totalMonthlyDuration.get(),conferencesMonthlyCount);
-        Integer averageDurationPreviousMonth = safeDivision(totalPreviousMonthDuration.get(),conferencesPreviousMonthCount);
+        Integer averageDurationDaily = safeDivision(totalDailyDuration,conferencesDailyCount);
+        Integer averageDurationMonthly = safeDivision(totalMonthlyDuration,conferencesMonthlyCount);
+        Integer averageDurationPreviousMonth = safeDivision(totalPreviousMonthDuration,conferencesPreviousMonthCount);
 
-        Integer averageParticipantsDaily = safeDivision(participantsDailyCount.get(),conferencesDailyCount);
-        Integer averageParticipantsMonthly = safeDivision(participantsMonthlyCount.get(),conferencesMonthlyCount);
-        Integer averageParticipantsLastMonth = safeDivision(participantsPreviousMonthCount.get(),conferencesPreviousMonthCount);
+        Integer averageParticipantsDaily = safeDivision(participantsDailyCount,conferencesDailyCount);
+        Integer averageParticipantsMonthly = safeDivision(participantsMonthlyCount,conferencesMonthlyCount);
+        Integer averageParticipantsLastMonth = safeDivision(participantsPreviousMonthCount,conferencesPreviousMonthCount);
 
         reportData.put("ConferencesDaily", String.valueOf(conferencesDailyCount));
-        reportData.put("ConferencesDurationDaily", String.valueOf(totalDailyDuration.get()));
-        reportData.put("ParticipantsSumDaily", String.valueOf(participantsDailyCount.get()));
+        reportData.put("ConferencesDurationDaily", String.valueOf(totalDailyDuration));
+        reportData.put("ParticipantsSumDaily", String.valueOf(participantsDailyCount));
         reportData.put("AvgDurationDaily", String.valueOf(averageDurationDaily));
         reportData.put("AvgParticipantsDaily", String.valueOf(averageParticipantsDaily));
         reportData.put("ConferencesMonthly", String.valueOf(conferencesMonthly.size()));
         reportData.put("ConferencesPreviousMonth", String.valueOf(conferencesLastMonth.size()));
         reportData.put("ConferencesMonthlyDiff", String.valueOf(conferencesMonthly.size() - conferencesLastMonth.size()));
-        reportData.put("DurationMonthly", String.valueOf(totalMonthlyDuration.get()));
-        reportData.put("DurationPreviousMonth", String.valueOf(totalPreviousMonthDuration.get()));
-        reportData.put("DurationMonthlyDiff", String.valueOf(totalMonthlyDuration.get() - totalPreviousMonthDuration.get()));
-        reportData.put("ParticipantsMonthly", String.valueOf(participantsMonthlyCount.get()));
-        reportData.put("ParticipantsPreviousMonth", String.valueOf(participantsPreviousMonthCount.get()));
-        reportData.put("ParticipantsMonthlyDiff", String.valueOf(participantsMonthlyCount.get() - participantsPreviousMonthCount.get()));
+        reportData.put("DurationMonthly", String.valueOf(totalMonthlyDuration));
+        reportData.put("DurationPreviousMonth", String.valueOf(totalPreviousMonthDuration));
+        reportData.put("DurationMonthlyDiff", String.valueOf(totalMonthlyDuration - totalPreviousMonthDuration));
+        reportData.put("ParticipantsMonthly", String.valueOf(participantsMonthlyCount));
+        reportData.put("ParticipantsPreviousMonth", String.valueOf(participantsPreviousMonthCount));
+        reportData.put("ParticipantsMonthlyDiff", String.valueOf(participantsMonthlyCount - participantsPreviousMonthCount));
         reportData.put("DurationAvgMonthly", String.valueOf(averageDurationMonthly));
         reportData.put("DurationAvgPreviousMonth", String.valueOf(averageDurationPreviousMonth));
         reportData.put("DurationAvgMonthlyDiff", String.valueOf(averageDurationMonthly - averageDurationPreviousMonth));
