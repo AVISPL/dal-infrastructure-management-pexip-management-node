@@ -80,11 +80,11 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private static final String ONE_TOUCH_JOIN_MEETINGS_PER_ENDPOINT_URI = "status/v1/mjx_meeting/?endpoint_name=%s"; //
     */
 
-    private static int smtpPort = 25;
-    private static String smtpHost = "";
-    private static String smtpUsername = "";
-    private static String smtpPassword = "";
-    private static String smtpSender = "";
+    private int smtpPort = 25;
+    private String smtpHost;
+    private String smtpUsername;
+    private String smtpPassword;
+    private String smtpSender;
 
     private int daysBackReports = 1;
     private boolean displayConferencesStatistics = false;
@@ -128,17 +128,18 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         staticStatistics.put("AdapterVersion", properties.getProperty("pexip.aggregator.version"));
         staticStatistics.put("AdapterBuildDate", properties.getProperty("pexip.aggregator.build.date"));
         staticStatistics.put("AdapterUptime", normalizeUptime((System.currentTimeMillis() - adapterInitializationTimestamp)/1000));
-        staticStatistics.put("Export#LicensingReport", "");
-        staticStatistics.put("Export#HistoricalReport", "");
-        staticStatistics.put("Export#DaysBack", "");
-        staticStatistics.put("Export#TotalStatistics", "");
 
         List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
-
-        controllableProperties.add(createNumber("Export#DaysBack", daysBackReports));
-        controllableProperties.add(createButton("Export#TotalStatistics", "Export", "Exporting", 0L));
-        controllableProperties.add(createButton("Export#HistoricalReport", "Export", "Exporting", 0L));
-        controllableProperties.add(createButton("Export#LicensingReport", "Export", "Exporting", 0L));
+        if(mailSender != null) {
+            staticStatistics.put("Export#LicensingReport", "");
+            staticStatistics.put("Export#HistoricalReport", "");
+            staticStatistics.put("Export#DaysBack", "");
+            staticStatistics.put("Export#TotalStatistics", "");
+            controllableProperties.add(createNumber("Export#DaysBack", daysBackReports));
+            controllableProperties.add(createButton("Export#TotalStatistics", "Export", "Exporting", 0L));
+            controllableProperties.add(createButton("Export#HistoricalReport", "Export", "Exporting", 0L));
+            controllableProperties.add(createButton("Export#LicensingReport", "Export", "Exporting", 0L));
+        }
 
         JsonNode response = doGet(LICENSING_URI, JsonNode.class);
         ArrayNode licensingData = (ArrayNode) response.get(OBJECTS);
@@ -165,8 +166,14 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
         Map<String, PropertiesMapping> mapping = new PropertiesMappingParser().loadYML("mapping/model-mapping.yml", getClass());
         aggregatedDeviceProcessor = new AggregatedDeviceProcessor(mapping);
-        mailSender = mailSender();
         properties.load(getClass().getResourceAsStream("/version.properties"));
+        if(StringUtils.isNullOrEmpty(smtpHost) || StringUtils.isNullOrEmpty(smtpPassword) || StringUtils.isNullOrEmpty(smtpSender) ||
+            StringUtils.isNullOrEmpty(smtpUsername)) {
+            if(logger.isInfoEnabled()) {
+                logger.info("SMTP Settings are not fully provided, unable to initialize mail sender.");
+            }
+        }
+        mailSender = mailSender();
     }
 
     /**
@@ -176,7 +183,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *
      * @return configured {@link JavaMailSender} instance
      */
-    private static JavaMailSender mailSender() {
+    private JavaMailSender mailSender() {
         final JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(smtpHost);
         sender.setPort(smtpPort);
@@ -190,8 +197,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *
      * @return value of {@link #smtpPort}
      */
-    public static int getSmtpPort() {
+    public int getSmtpPort() {
         return smtpPort;
+    }
+
+    /**
+     * Sets {@code smtpPort}
+     *
+     * @param smtpPort the {@code int} field
+     */
+    public void setSmtpPort(int smtpPort) {
+        this.smtpPort = smtpPort;
     }
 
     /**
@@ -199,8 +215,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *
      * @return value of {@link #smtpHost}
      */
-    public static String getSmtpHost() {
+    public String getSmtpHost() {
         return smtpHost;
+    }
+
+    /**
+     * Sets {@code smtpHost}
+     *
+     * @param smtpHost the {@code java.lang.String} field
+     */
+    public void setSmtpHost(String smtpHost) {
+        this.smtpHost = smtpHost;
     }
 
     /**
@@ -208,8 +233,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *
      * @return value of {@link #smtpUsername}
      */
-    public static String getSmtpUsername() {
+    public String getSmtpUsername() {
         return smtpUsername;
+    }
+
+    /**
+     * Sets {@code smtpUsername}
+     *
+     * @param smtpUsername the {@code java.lang.String} field
+     */
+    public void setSmtpUsername(String smtpUsername) {
+        this.smtpUsername = smtpUsername;
     }
 
     /**
@@ -217,8 +251,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *
      * @return value of {@link #smtpPassword}
      */
-    public static String getSmtpPassword() {
+    public String getSmtpPassword() {
         return smtpPassword;
+    }
+
+    /**
+     * Sets {@code smtpPassword}
+     *
+     * @param smtpPassword the {@code java.lang.String} field
+     */
+    public void setSmtpPassword(String smtpPassword) {
+        this.smtpPassword = smtpPassword;
     }
 
     /**
@@ -226,8 +269,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *
      * @return value of {@link #smtpSender}
      */
-    public static String getSmtpSender() {
+    public String getSmtpSender() {
         return smtpSender;
+    }
+
+    /**
+     * Sets {@code smtpSender}
+     *
+     * @param smtpSender the {@code java.lang.String} field
+     */
+    public void setSmtpSender(String smtpSender) {
+        this.smtpSender = smtpSender;
     }
 
     /**
@@ -662,29 +714,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
                     aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ParticipantsCount",
                             String.valueOf(participants.stream().filter(data -> data.get("Conference").equals(groupPrefix)).count()));
 
-                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ExportParticipants", "");
-                    aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ExportParticipants",
-                            "Export", "Exporting", 0L));
                     aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "Disconnect", "");
                     aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "Disconnect",
                             "Disconnect", "Disconnecting", 0L));
+
+                    if(mailSender != null) {
+                        aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ExportParticipants", "");
+                        aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ExportParticipants",
+                                "Export", "Exporting", 0L));
+                    }
                 });
             }
-
-//            if(displayParticipantsStatistics) {
-//                participants.stream().filter(stub -> stub.getStaticData().get("MediaNode")
-//                        .equals(aggregatedDevice.getProperties().get("Configuration#NodeAddress"))).forEach(stub -> {
-//                    String groupPrefix = stub.getStaticData().get("DisplayName");
-//                    stub.getStaticData().keySet().forEach(s -> aggregatedDevice.getProperties().put("Participant:" + groupPrefix + "#" + s, stub.getStaticData().get(s)));
-//                    //stub.getHistoricalData().keySet().forEach(s -> aggregatedDevice.getDynamicStatistics().put("Participant:" + groupPrefix + "#" + s, stub.getHistoricalData().get(s)));
-//
-//                    aggregatedDevice.getProperties().put("Participant:" + groupPrefix + "#" + "Disconnect", "");
-//                    aggregatedDevice.getControllableProperties().add(createButton("Participant:" + groupPrefix + "#" + "Disconnect",
-//                            "Disconnect", "Disconnecting", 0L));
-//
-//                    knownParticipants.put(groupPrefix, stub.getStaticData().get("ID"));
-//                });
-//            }
         });
         return conferencingNodes;
     }
