@@ -25,9 +25,9 @@ public class PexipManagementNodeTest {
 
         pexipManagementNode.setSmtpPort(25);
         pexipManagementNode.setSmtpHost("172.31.11.188");
-        pexipManagementNode.setSmtpPassword("$uPP0rt16");
+        pexipManagementNode.setSmtpPassword("");
         pexipManagementNode.setSmtpSender("noreply@avispl.com");
-        pexipManagementNode.setSmtpUsername("notifications@vnocsymphony.com");
+        pexipManagementNode.setSmtpUsername("");
         pexipManagementNode.setEmailReportsRecipients("max@rossiytsev.com");
         pexipManagementNode.init();
     }
