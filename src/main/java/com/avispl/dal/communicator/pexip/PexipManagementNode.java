@@ -125,6 +125,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         List<Statistics> statistics = new ArrayList<>();
         ExtendedStatistics extendedStatistics = new ExtendedStatistics();
         statistics.add(extendedStatistics);
+        /*After 5.2 dynamicStatistics support should be added*/
 //        Map<String, String> dynamicStatistics = new HashMap<>();
         Map<String, String> staticStatistics = new HashMap<>();
 
