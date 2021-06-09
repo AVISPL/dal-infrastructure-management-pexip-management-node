@@ -61,7 +61,6 @@ import java.util.stream.Collectors;
 public class PexipManagementNode extends RestCommunicator implements Monitorable, Controller, Aggregator {
     private static final String BASE_URI = "api/admin/";
     private static final String CONFERENCING_NODES_URI = "status/v1/worker_vm/?limit=%s";
-    //  private static final String MANAGEMENT_NODES_URI = "status/v1/management_vm/";
     private static final String CONFERENCE_SHARD_URI = "status/v1/conference_shard/?limit=%s";
     private static final String CONFERENCE_PARTICIPANTS_URI = "/status/v1/participant/?limit=%s&conference=%s"; //lookup by conference name
     private static final String PARTICIPANTS_URI = "status/v1/participant/?limit=%s";
@@ -91,7 +90,6 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     private int daysBackReports = 1;
     private boolean displayConferencesStatistics = false;
-    private boolean displayParticipantsStatistics = false;
 
     private String emailReportsRecipients;
     private JavaMailSender mailSender;
@@ -135,7 +133,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         staticStatistics.put("AdapterUptime", normalizeUptime((System.currentTimeMillis() - adapterInitializationTimestamp) / 1000));
 
         List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
-        if (mailSender != null) {
+        if (smtpDataProvided()) {
             staticStatistics.put("Export#LicensingReport", "");
             staticStatistics.put("Export#HistoricalReport", "");
             staticStatistics.put("Export#DaysBack", "");
@@ -172,13 +170,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         Map<String, PropertiesMapping> mapping = new PropertiesMappingParser().loadYML("mapping/model-mapping.yml", getClass());
         aggregatedDeviceProcessor = new AggregatedDeviceProcessor(mapping);
         properties.load(getClass().getResourceAsStream("/version.properties"));
-        if (StringUtils.isNullOrEmpty(smtpHost) || StringUtils.isNullOrEmpty(smtpPassword) || StringUtils.isNullOrEmpty(smtpSender) ||
-                StringUtils.isNullOrEmpty(smtpUsername)) {
+        if (!smtpDataProvided()) {
             if (logger.isInfoEnabled()) {
                 logger.info("SMTP Settings are not fully provided, unable to initialize mail sender.");
             }
+        } else {
+            mailSender = mailSender();
         }
-        mailSender = mailSender();
+    }
+
+    private boolean smtpDataProvided(){
+        return !StringUtils.isNullOrEmpty(smtpHost) && !StringUtils.isNullOrEmpty(smtpSender);
     }
 
     /**
@@ -192,8 +194,17 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         final JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(smtpHost);
         sender.setPort(smtpPort);
-        sender.setUsername(smtpUsername);
-        sender.setPassword(smtpPassword);
+        if(!StringUtils.isNullOrEmpty(smtpUsername)) {
+            sender.setUsername(smtpUsername);
+        } else if(logger.isInfoEnabled()) {
+            logger.info("SMTP Username is not set.");
+        }
+
+        if(!StringUtils.isNullOrEmpty(smtpPassword)) {
+            sender.setPassword(smtpPassword);
+        } else if(logger.isInfoEnabled()) {
+            logger.info("SMTP Password is not set.");
+        }
         return sender;
     }
 
@@ -323,24 +334,6 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         this.displayConferencesStatistics = displayConferencesStatistics;
     }
 
-    /**
-     * Retrieves {@code {@link #displayParticipantsStatistics}}
-     *
-     * @return value of {@link #displayParticipantsStatistics}
-     */
-    public boolean isDisplayParticipantsStatistics() {
-        return displayParticipantsStatistics;
-    }
-
-    /**
-     * Sets {@code displayParticipantsStatistics}
-     *
-     * @param displayParticipantsStatistics the {@code boolean} field
-     */
-    public void setDisplayParticipantsStatistics(boolean displayParticipantsStatistics) {
-        this.displayParticipantsStatistics = displayParticipantsStatistics;
-    }
-
     @Override
     public void controlProperty(ControllableProperty controllableProperty) throws Exception {
         String property = controllableProperty.getProperty();
@@ -360,7 +353,11 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         } else if (property.equals("Export#HistoricalReport")) {
             retrieveHistoricalInfo();
         } else if (property.equals("Export#DaysBack")) {
-            daysBackReports = Integer.parseInt(value);
+            int daysBackValue = Integer.parseInt(value);
+            if(daysBackValue < 0) {
+                throw new IllegalArgumentException("Invalid daysBackReports value. Must be positive number.");
+            }
+            daysBackReports = daysBackValue;
         } else if (property.endsWith("Disconnect") || property.startsWith("Export") || property.endsWith("ExportParticipants")) {
             String key = property.substring(property.indexOf(":") + 1, property.indexOf("#"));
             if (property.startsWith("Conference") && property.endsWith("Disconnect")) {
@@ -423,21 +420,20 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private Map<String, String> buildMajorNodeReport() throws Exception {
         Map<String, String> reportData = new HashMap<>();
 
-        LocalDateTime currentDayStart = LocalDateTime.now().withHour(0).withMinute(0);
-        LocalDate currentMonthStart = LocalDate.now().withDayOfMonth(1);
+        LocalDate currentDate = LocalDate.now();
+        LocalDateTime currentDateTime = LocalDateTime.now();
+
+        LocalDateTime currentDayStart = currentDateTime.withHour(0).withMinute(0);
+        LocalDate currentMonthStart = currentDate.withDayOfMonth(1);
 
         LocalDate previousMonthStart;
         if (currentMonthStart.getMonthValue() == 1) {
-            previousMonthStart = LocalDate.now().minusYears(1).withMonth(12).withDayOfMonth(1);
+            previousMonthStart = currentDate.minusYears(1).withMonth(12).withDayOfMonth(1);
         } else {
-            previousMonthStart = LocalDate.now().withMonth(currentMonthStart.getMonthValue() - 1).withDayOfMonth(1);
+            previousMonthStart = currentDate.withMonth(currentMonthStart.getMonthValue() - 1).withDayOfMonth(1);
         }
 
-        LocalDateTime currentDateTime = LocalDateTime.now();
 
-//        JsonNode participantsDaily = doGet(String.format(HISTORICAL_PARTICIPANTS_URI, 5000, currentDayStart, currentDateTime), JsonNode.class).get("objects");
-//        JsonNode participantsMonthly = doGet(String.format(HISTORICAL_PARTICIPANTS_URI, 5000, currentMonthStart, currentDateTime), JsonNode.class).get("objects");
-//        JsonNode participantsLastMonth = doGet(String.format(HISTORICAL_PARTICIPANTS_URI, 5000, previousMonthStart, currentMonthStart), JsonNode.class).get("objects");
         List<Conference> conferencesDaily = doGet(String.format(HISTORICAL_CONFERENCE_URI, RESPONSE_LIMIT, currentDayStart, currentDateTime),
                 new ParameterizedTypeReference<ManagementNodeResponse<Conference>>() {
                 }).getObjects();
@@ -531,10 +527,11 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         List<Map<String, String>> conferencesReport = new ArrayList<>();
         List<Map<String, String>> participantsReport = new ArrayList<>();
 
-        LocalDateTime dateFrom = LocalDateTime.now().minusDays(daysBackReports);
-        LocalDateTime dateTo = LocalDateTime.now();
-        JsonNode historicalConferences = doGet(String.format(HISTORICAL_CONFERENCE_URI, RESPONSE_LIMIT, dateFrom, dateTo), JsonNode.class);
-        JsonNode historicalParticipants = doGet(String.format(HISTORICAL_PARTICIPANTS_URI, RESPONSE_LIMIT, dateFrom, dateTo), JsonNode.class);
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        LocalDateTime dateFrom = currentDateTime.minusDays(daysBackReports);
+
+        JsonNode historicalConferences = doGet(String.format(HISTORICAL_CONFERENCE_URI, RESPONSE_LIMIT, dateFrom, currentDateTime), JsonNode.class);
+        JsonNode historicalParticipants = doGet(String.format(HISTORICAL_PARTICIPANTS_URI, RESPONSE_LIMIT, dateFrom, currentDateTime), JsonNode.class);
 
         ArrayNode historicalConferenceArray = (ArrayNode) historicalConferences.get(OBJECTS);
         ArrayNode historicalParticipantArray = (ArrayNode) historicalParticipants.get(OBJECTS);
@@ -558,8 +555,8 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             });
         }
 
-        ReportWrapper conferencesReportWrapper = new ReportWrapper(String.format("conferences_report_%s_%s", LocalDate.now().minusDays(daysBackReports), LocalDate.now()), conferencesReport);
-        ReportWrapper participantsReportWrapper = new ReportWrapper(String.format("participants_report_%s_%s", LocalDate.now().minusDays(daysBackReports), LocalDate.now()), participantsReport);
+        ReportWrapper conferencesReportWrapper = new ReportWrapper(String.format("conferences_report_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), conferencesReport);
+        ReportWrapper participantsReportWrapper = new ReportWrapper(String.format("participants_report_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), participantsReport);
 
         sendReportsEmail(Arrays.asList(conferencesReportWrapper, participantsReportWrapper));
     }
@@ -608,6 +605,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             ExtendedStatistics extendedStatistics = new ExtendedStatistics();
             statistics.add(extendedStatistics);
             extendedStatistics.setStatistics(aggregatedDevice.getProperties());
+            /*TODO: apply when SY v5.2 is out*/
             //extendedStatistics.setDynamicStatistics(aggregatedDevice.getDynamicStatistics());
             aggregatedDevice.setMonitoredStatistics(statistics);
         });
@@ -709,30 +707,28 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         knownConferences.clear();
         knownParticipants.clear();
 
-        if (!displayParticipantsStatistics && !displayConferencesStatistics) {
+        if (!displayConferencesStatistics) {
             return conferencingNodes;
         }
         conferencingNodes.forEach(aggregatedDevice -> {
-            if (displayConferencesStatistics) {
-                conferences.stream().filter(map -> map.get("NodeAddress")
-                        .equals(aggregatedDevice.getProperties().get("Configuration#NodeAddress"))).forEach(map -> {
-                    String groupPrefix = map.get("Name");
-                    map.keySet().forEach(s -> aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + s, map.get(s)));
-                    knownConferences.put(groupPrefix, map.get("ID"));
-                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ParticipantsCount",
-                            String.valueOf(participants.stream().filter(data -> data.get("Conference").equals(groupPrefix)).count()));
+            conferences.stream().filter(map -> map.get("NodeAddress")
+                    .equals(aggregatedDevice.getProperties().get("Configuration#NodeAddress"))).forEach(map -> {
+                String groupPrefix = map.get("Name");
+                map.keySet().forEach(s -> aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + s, map.get(s)));
+                knownConferences.put(groupPrefix, map.get("ID"));
+                aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ParticipantsCount",
+                        String.valueOf(participants.stream().filter(data -> data.get("Conference").equals(groupPrefix)).count()));
 
-                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "Disconnect", "");
-                    aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "Disconnect",
-                            "Disconnect", "Disconnecting", 0L));
+                aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "Disconnect", "");
+                aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "Disconnect",
+                        "Disconnect", "Disconnecting", 0L));
 
-                    if (mailSender != null) {
-                        aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ExportParticipants", "");
-                        aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ExportParticipants",
-                                "Export", "Exporting", 0L));
-                    }
-                });
-            }
+                if (smtpDataProvided()) {
+                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ExportParticipants", "");
+                    aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ExportParticipants",
+                            "Export", "Exporting", 0L));
+                }
+            });
         });
         return conferencingNodes;
     }

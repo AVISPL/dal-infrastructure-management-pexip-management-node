@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.dal.communicator.dto.api.conferences;
 
 import com.avispl.dal.communicator.dto.api.entities.BaseResponseEntity;
