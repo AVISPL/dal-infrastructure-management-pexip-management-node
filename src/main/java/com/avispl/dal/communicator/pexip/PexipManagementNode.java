@@ -137,7 +137,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         if (smtpDataProvided()) {
             staticStatistics.put("Export#LicensingReport", "");
             staticStatistics.put("Export#HistoricalReport", "");
-            staticStatistics.put("Export#DaysBack", "");
+            staticStatistics.put("Export#DaysBack", String.valueOf(daysBackReports));
             staticStatistics.put("Export#TotalStatistics", "");
             controllableProperties.add(createNumber("Export#DaysBack", daysBackReports));
             controllableProperties.add(createButton("Export#TotalStatistics", "Export", "Exporting", 0L));
