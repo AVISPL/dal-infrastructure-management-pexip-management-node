@@ -135,14 +135,14 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
         List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
         if (smtpDataProvided()) {
-            staticStatistics.put("Export#LicensingReport", "");
-            staticStatistics.put("Export#HistoricalReport", "");
-            staticStatistics.put("Export#DaysBack", String.valueOf(daysBackReports));
-            staticStatistics.put("Export#TotalStatistics", "");
-            controllableProperties.add(createNumber("Export#DaysBack", daysBackReports));
-            controllableProperties.add(createButton("Export#TotalStatistics", "Export", "Exporting", 0L));
-            controllableProperties.add(createButton("Export#HistoricalReport", "Export", "Exporting", 0L));
-            controllableProperties.add(createButton("Export#LicensingReport", "Export", "Exporting", 0L));
+            staticStatistics.put("Logs#LicensingLogs", "");
+            staticStatistics.put("Logs#HistoricalLogs", "");
+            staticStatistics.put("Logs#DaysBack", String.valueOf(daysBackReports));
+            staticStatistics.put("Logs#StatisticLogs", "");
+            controllableProperties.add(createNumber("Logs#DaysBack", daysBackReports));
+            controllableProperties.add(createButton("Logs#StatisticLogs", "Email Log", "Sending Email", 0L));
+            controllableProperties.add(createButton("Logs#HistoricalLogs", "Email Log", "Sending Email", 0L));
+            controllableProperties.add(createButton("Logs#LicensingLogs", "Email Log", "Sending Email", 0L));
         }
 
         JsonNode response = doGet(LICENSING_URI, JsonNode.class);
@@ -340,7 +340,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         String property = controllableProperty.getProperty();
         String value = String.valueOf(controllableProperty.getValue());
 
-        if (property.equals("Export#LicensingReport")) {
+        if (property.equals("Logs#LicensingLogs")) {
             JsonNode response = doGet(LICENSING_URI, JsonNode.class);
             ArrayNode licensingData = (ArrayNode) response.get(OBJECTS);
             if (licensingData != null && !licensingData.isEmpty()) {
@@ -351,23 +351,23 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             } else {
                 throw new RuntimeException("Empty licensing data response, unable to compose a licensing report");
             }
-        } else if (property.equals("Export#HistoricalReport")) {
+        } else if (property.equals("Logs#HistoricalLogs")) {
             retrieveHistoricalInfo();
-        } else if (property.equals("Export#DaysBack")) {
+        } else if (property.equals("Logs#DaysBack")) {
             int daysBackValue = Integer.parseInt(value);
             if(daysBackValue < 0) {
                 throw new IllegalArgumentException("Invalid daysBackReports value. Must be positive number.");
             }
             daysBackReports = daysBackValue;
-        } else if (property.endsWith("Disconnect") || property.startsWith("Export") || property.endsWith("ExportParticipants")) {
+        } else if (property.endsWith("Disconnect") || property.startsWith("Logs") || property.endsWith("ParticipantLogs")) {
             String key = property.substring(property.indexOf(":") + 1, property.indexOf("#"));
             if (property.startsWith("Conference") && property.endsWith("Disconnect")) {
                 disconnectConference(knownConferences.get(key));
             } else if (property.startsWith("Participant")) {
                 disconnectParticipant(knownParticipants.get(key));
-            } else if (property.endsWith("Export#TotalStatistics")) {
+            } else if (property.endsWith("Logs#TotalStatistics")) {
                 sendReportsEmail("avg_monthly", buildMajorNodeReport());
-            } else if (property.endsWith("ExportParticipants")) {
+            } else if (property.endsWith("ParticipantLogs")) {
                 sendReportsEmail(Collections.singletonList(new ReportWrapper(("participants_" + LocalDateTime.now()).replaceAll(":", "-"), retrieveParticipants(key))));
             }
         }
@@ -725,9 +725,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
                         "Disconnect", "Disconnecting", 0L));
 
                 if (smtpDataProvided()) {
-                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ExportParticipants", "");
-                    aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ExportParticipants",
-                            "Export", "Exporting", 0L));
+                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ParticipantLogs", "");
+                    aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ParticipantLogs",
+                            "Email Log", "Sending Email", 0L));
                 }
             });
         });
