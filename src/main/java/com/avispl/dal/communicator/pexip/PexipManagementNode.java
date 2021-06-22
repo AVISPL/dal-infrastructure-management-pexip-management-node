@@ -140,9 +140,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             staticStatistics.put("Logs#DaysBack", String.valueOf(daysBackReports));
             staticStatistics.put("Logs#StatisticLogs", "");
             controllableProperties.add(createNumber("Logs#DaysBack", daysBackReports));
-            controllableProperties.add(createButton("Logs#StatisticLogs", "Email Log", "Sending Email", 0L));
-            controllableProperties.add(createButton("Logs#HistoricalLogs", "Email Log", "Sending Email", 0L));
-            controllableProperties.add(createButton("Logs#LicensingLogs", "Email Log", "Sending Email", 0L));
+            controllableProperties.add(createButton("Logs#StatisticLogs", "Email Logs", "Sending Email", 0L));
+            controllableProperties.add(createButton("Logs#HistoricalLogs", "Email Logs", "Sending Email", 0L));
+            controllableProperties.add(createButton("Logs#LicensingLogs", "Email Logs", "Sending Email", 0L));
         }
 
         JsonNode response = doGet(LICENSING_URI, JsonNode.class);
@@ -727,7 +727,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
                 if (smtpDataProvided()) {
                     aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ParticipantLogs", "");
                     aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ParticipantLogs",
-                            "Email Log", "Sending Email", 0L));
+                            "Email Logs", "Sending Email", 0L));
                 }
             });
         });
