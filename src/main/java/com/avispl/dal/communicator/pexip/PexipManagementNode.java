@@ -355,7 +355,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
                 /* After 5.2 will be changed to Map<String, String> report = new HashMap<>(); */
                 AggregatedDevice report = new AggregatedDevice();
                 aggregatedDeviceProcessor.applyProperties(report, licensingData.get(0), "NodeLicensingReport");
-                sendReportsEmail("licensing_report", report.getProperties());
+                sendReportsEmail("licensing_logs", report.getProperties());
             } else {
                 throw new RuntimeException("Empty licensing data response, unable to compose a licensing report");
             }
@@ -564,8 +564,8 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             });
         }
 
-        ReportWrapper conferencesReportWrapper = new ReportWrapper(String.format("conferences_report_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), conferencesReport);
-        ReportWrapper participantsReportWrapper = new ReportWrapper(String.format("participants_report_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), participantsReport);
+        ReportWrapper conferencesReportWrapper = new ReportWrapper(String.format("conferences_logs_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), conferencesReport);
+        ReportWrapper participantsReportWrapper = new ReportWrapper(String.format("participants_logs_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), participantsReport);
 
         sendReportsEmail(Arrays.asList(conferencesReportWrapper, participantsReportWrapper));
     }
@@ -862,7 +862,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      * @throws IOException        if any csv file related error occurs (no space left, unable to create/remove file, etc)
      */
     private void sendReportsEmail(String name, Map<String, String> report) throws MessagingException, IOException {
-        MimeMessageHelper helper = prepareMimeMessageHelper("Reports");
+        MimeMessageHelper helper = prepareMimeMessageHelper("Logs");
         File file = null;
         try {
             file = new File(name + ".csv");
