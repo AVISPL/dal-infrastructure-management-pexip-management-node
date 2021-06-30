@@ -907,7 +907,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         helper.setFrom(smtpSender);
         helper.setTo(emailRecipients);
         helper.setSubject(subject);
-        helper.setText("Please see reports in attachments");
+        helper.setText("Please see logs in attachments");
 
         return helper;
     }
