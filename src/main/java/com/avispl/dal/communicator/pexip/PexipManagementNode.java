@@ -72,8 +72,15 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     private static final String COMMAND_DISCONNECT_PARTICIPANT = "command/v1/participant/disconnect/";
     private static final String COMMAND_DISCONNECT_CONFERENCE = "command/v1/conference/disconnect/";
+    private static final String LICENSING_LOGS = "Logs#LicensingLogs";
+    private static final String HISTORICAL_LOGS = "Logs#HistoricalLogs";
+    private static final String DAYS_BACK_LOGS = "Logs#DaysBack";
+    private static final String STATISTIC_LOGS = "Logs#StatisticLogs";
 
     private static final String OBJECTS = "objects";
+
+    /*default limit for using as a query string parameter for pexip api requests*/
+    private final int RESPONSE_LIMIT = 5000;
 
     /*TODO: OTJ for v2:*/
     /*
@@ -82,29 +89,30 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private static final String ONE_TOUCH_JOIN_MEETINGS_PER_ENDPOINT_URI = "status/v1/mjx_meeting/?endpoint_name=%s"; //
     */
 
+    /*SMTP settings*/
     private int smtpPort = 25;
     private String smtpHost;
     private String smtpUsername;
     private String smtpPassword;
     private String smtpSender;
 
+    /*csv list of email addresses to email reports to*/
+    private String emailReportsRecipients;
+    /*days back period for historical statistics reports*/
     private int daysBackReports = 1;
+    /*whether or not conferences statistics should be displayed on the conferencing nodes at runtime*/
     private boolean displayConferencesStatistics = false;
 
-    private String emailReportsRecipients;
-    private JavaMailSender mailSender;
-    private final int RESPONSE_LIMIT = 5000;
-
-    /**
-     * Device adapter instantiation timestamp.
-     */
+    /*Device adapter instantiation timestamp.*/
     private long adapterInitializationTimestamp;
     /*Name:ID pair to lookup id for specific control actions*/
     private Map<String, String> knownConferences = new HashMap<>();
     private Map<String, String> knownParticipants = new HashMap<>();
+    /*adapter properties, containing its metadata (built date, version etc)*/
+    private Properties properties = new Properties();
 
     private AggregatedDeviceProcessor aggregatedDeviceProcessor;
-    Properties properties = new Properties();
+    private JavaMailSender mailSender;
 
     /*
      * Historical:
@@ -135,14 +143,14 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
         List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
         if (smtpDataProvided()) {
-            staticStatistics.put("Logs#LicensingLogs", "");
-            staticStatistics.put("Logs#HistoricalLogs", "");
-            staticStatistics.put("Logs#DaysBack", String.valueOf(daysBackReports));
-            staticStatistics.put("Logs#StatisticLogs", "");
-            controllableProperties.add(createNumber("Logs#DaysBack", daysBackReports));
-            controllableProperties.add(createButton("Logs#StatisticLogs", "Email Logs", "Sending Email", 0L));
-            controllableProperties.add(createButton("Logs#HistoricalLogs", "Email Logs", "Sending Email", 0L));
-            controllableProperties.add(createButton("Logs#LicensingLogs", "Email Logs", "Sending Email", 0L));
+            staticStatistics.put(LICENSING_LOGS, "");
+            staticStatistics.put(HISTORICAL_LOGS, "");
+            staticStatistics.put(DAYS_BACK_LOGS, String.valueOf(daysBackReports));
+            staticStatistics.put(STATISTIC_LOGS, "");
+            controllableProperties.add(createNumber(DAYS_BACK_LOGS, daysBackReports));
+            controllableProperties.add(createButton(STATISTIC_LOGS, "Email Logs", "Sending Email", 0L));
+            controllableProperties.add(createButton(HISTORICAL_LOGS, "Email Logs", "Sending Email", 0L));
+            controllableProperties.add(createButton(LICENSING_LOGS, "Email Logs", "Sending Email", 0L));
         }
 
         JsonNode response = doGet(LICENSING_URI, JsonNode.class);
@@ -340,7 +348,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         String property = controllableProperty.getProperty();
         String value = String.valueOf(controllableProperty.getValue());
 
-        if (property.equals("Logs#LicensingLogs")) {
+        if (property.equals(LICENSING_LOGS)) {
             JsonNode response = doGet(LICENSING_URI, JsonNode.class);
             ArrayNode licensingData = (ArrayNode) response.get(OBJECTS);
             if (licensingData != null && !licensingData.isEmpty()) {
@@ -351,9 +359,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             } else {
                 throw new RuntimeException("Empty licensing data response, unable to compose a licensing report");
             }
-        } else if (property.equals("Logs#HistoricalLogs")) {
+        } else if (property.equals(HISTORICAL_LOGS)) {
             retrieveHistoricalInfo();
-        } else if (property.equals("Logs#DaysBack")) {
+        } else if (property.equals(DAYS_BACK_LOGS)) {
             int daysBackValue = Integer.parseInt(value);
             if(daysBackValue < 0) {
                 throw new IllegalArgumentException("Invalid daysBackReports value. Must be positive number.");
@@ -365,7 +373,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
                 disconnectConference(knownConferences.get(key));
             } else if (property.startsWith("Participant")) {
                 disconnectParticipant(knownParticipants.get(key));
-            } else if (property.endsWith("Logs#TotalStatistics")) {
+            } else if (property.endsWith(STATISTIC_LOGS)) {
                 sendReportsEmail("avg_monthly", buildMajorNodeReport());
             } else if (property.endsWith("ParticipantLogs")) {
                 sendReportsEmail(Collections.singletonList(new ReportWrapper(("participants_" + LocalDateTime.now()).replaceAll(":", "-"), retrieveParticipants(key))));
@@ -776,7 +784,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private void sendReportsEmail(List<ReportWrapper> reports) throws MessagingException, IOException {
         List<File> files = new ArrayList<>();
         try {
-            MimeMessageHelper helper = prepareMimeMessageHelper("Reports");
+            MimeMessageHelper helper = prepareMimeMessageHelper("Logs");
 
             for (ReportWrapper reportWrapper : reports) {
                 String reportFileName = reportWrapper.getReportName() + ".csv";

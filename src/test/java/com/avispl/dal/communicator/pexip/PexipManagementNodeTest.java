@@ -103,4 +103,11 @@ public class PexipManagementNodeTest {
         export.setProperty("Conference:Symphony_625_3075558_LH Pexip MCU#ExportParticipants");
         pexipManagementNode.controlProperty(export);
     }
+
+    public void testExportStatisticLogs() throws Exception {
+        pexipManagementNode.retrieveMultipleStatistics();
+        pexipManagementNode.getMultipleStatistics();
+        ControllableProperty export = new ControllableProperty();
+        export.setProperty("Logs#StatisticLogs");
+    }
 }
