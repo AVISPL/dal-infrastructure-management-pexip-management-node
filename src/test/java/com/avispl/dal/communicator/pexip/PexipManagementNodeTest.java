@@ -53,10 +53,10 @@ public class PexipManagementNodeTest {
 
         Assert.assertEquals(4, controls.size());
         Assert.assertEquals("1.0.0-SNAPSHOT", statisticsMap.get("AdapterVersion"));
-        Assert.assertEquals("", statisticsMap.get("Export#DaysBack"));
-        Assert.assertEquals("", statisticsMap.get("Export#HistoricalReport"));
-        Assert.assertEquals("", statisticsMap.get("Export#LicensingReport"));
-        Assert.assertEquals("", statisticsMap.get("Export#TotalStatistics"));
+        Assert.assertEquals("", statisticsMap.get("Logs#DaysBack"));
+        Assert.assertEquals("", statisticsMap.get("Logs#HistoricalLogs"));
+        Assert.assertEquals("", statisticsMap.get("Logs#LicensingLogs"));
+        Assert.assertEquals("", statisticsMap.get("Logs#StatisticLogs"));
         Assert.assertEquals("65", dynamicStatisticsMap.get("Licensing#PortTotal"));
     }
 
@@ -64,11 +64,11 @@ public class PexipManagementNodeTest {
     public void testSendHistoricalReports() throws Exception {
         ControllableProperty daysBackControl = new ControllableProperty();
         daysBackControl.setValue(10);
-        daysBackControl.setProperty("Export#DaysBack");
+        daysBackControl.setProperty("Logs#DaysBack");
         pexipManagementNode.controlProperty(daysBackControl);
 
         ControllableProperty sendReportsControl = new ControllableProperty();
-        sendReportsControl.setProperty("Export#HistoricalReport");
+        sendReportsControl.setProperty("Logs#HistoricalLogs");
 
         pexipManagementNode.controlProperty(sendReportsControl);
     }
@@ -76,7 +76,7 @@ public class PexipManagementNodeTest {
     @Test
     public void testSendTotalStatisticsReports() throws Exception {
         ControllableProperty sendReportsControl = new ControllableProperty();
-        sendReportsControl.setProperty("Export#TotalStatistics");
+        sendReportsControl.setProperty("Logs#StatisticLogs");
 
         pexipManagementNode.controlProperty(sendReportsControl);
     }
