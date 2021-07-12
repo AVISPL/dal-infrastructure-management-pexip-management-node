@@ -47,14 +47,17 @@ import java.util.stream.Collectors;
  * Device Aggregator communicator for Pexip Management Node
  * <p>
  * Main features (v1):
- * - Conferencing Nodes are provisioned as Aggregated Devices
- * - Conferencing Nodes extended properties keep track of conferencing node status and configuration
- * - Conferencing Nodes keep track of all active conferences at a runtime
- * - Conferencing Nodes have an option to disconnect a specific meeting
- * - Conferencing Nodes have an option of exporting list of active conference's participants as csv over email (requires SMTP setup)
- * - Management Node extended properties contain licensing information and port data
- * - Management Node has extra options of exporting licencing reports, since-date reports and monthly reports over email (requires SMTP setup)
- *
+ * <pre>
+ * <ul>
+ *     <li>- Conferencing Nodes are provisioned as Aggregated Devices</li>
+ *     <li>- Conferencing Nodes extended properties keep track of conferencing node status and configuration</li>
+ *     <li>- Conferencing Nodes keep track of all active conferences at a runtime</li>
+ *     <li>- Conferencing Nodes have an option to disconnect a specific meeting</li>
+ *     <li>- Conferencing Nodes have an option of exporting list of active conference's participants as csv over email (requires SMTP setup)</li>
+ *     <li>- Management Node extended properties contain licensing information and port data</li>
+ *     <li>- Management Node has extra options of exporting licencing reports, since-date reports and monthly reports over email (requires SMTP setup)</li>
+ * </ul>
+ * </pre>
  * @author Maksym.Rossiytsev
  * @since Symphony 5.1
  */
@@ -120,6 +123,11 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *   $mgr_meet = "https://" + $mgr_host + "/api/admin/status/v1/mjx_meeting/"
      * */
 
+    public PexipManagementNode (){
+        setBaseUri(BASE_URI);
+        setTrustAllCertificates(true);
+    }
+
     @Override
     public List<Statistics> getMultipleStatistics() throws Exception {
         List<Statistics> statistics = new ArrayList<>();
@@ -163,11 +171,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     @Override
     protected void internalInit() throws Exception {
-        adapterInitializationTimestamp = System.currentTimeMillis();
-        setBaseUri(BASE_URI);
-        setTrustAllCertificates(true);
         super.internalInit();
 
+        adapterInitializationTimestamp = System.currentTimeMillis();
         Map<String, PropertiesMapping> mapping = new PropertiesMappingParser().loadYML("mapping/model-mapping.yml", getClass());
         aggregatedDeviceProcessor = new AggregatedDeviceProcessor(mapping);
         properties.load(getClass().getResourceAsStream("/version.properties"));
@@ -180,7 +186,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         }
     }
 
-    private boolean smtpDataProvided(){
+    private boolean smtpDataProvided() {
         return !StringUtils.isNullOrEmpty(smtpHost) && !StringUtils.isNullOrEmpty(smtpSender);
     }
 
@@ -195,15 +201,15 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         final JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(smtpHost);
         sender.setPort(smtpPort);
-        if(!StringUtils.isNullOrEmpty(smtpUsername)) {
+        if (!StringUtils.isNullOrEmpty(smtpUsername)) {
             sender.setUsername(smtpUsername);
-        } else if(logger.isInfoEnabled()) {
+        } else if (logger.isInfoEnabled()) {
             logger.info("SMTP Username is not set.");
         }
 
-        if(!StringUtils.isNullOrEmpty(smtpPassword)) {
+        if (!StringUtils.isNullOrEmpty(smtpPassword)) {
             sender.setPassword(smtpPassword);
-        } else if(logger.isInfoEnabled()) {
+        } else if (logger.isInfoEnabled()) {
             logger.info("SMTP Password is not set.");
         }
         return sender;
@@ -355,7 +361,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             retrieveHistoricalInfo();
         } else if (property.equals("Export#DaysBack")) {
             int daysBackValue = Integer.parseInt(value);
-            if(daysBackValue < 0) {
+            if (daysBackValue < 0) {
                 throw new IllegalArgumentException("Invalid daysBackReports value. Must be positive number.");
             }
             daysBackReports = daysBackValue;
