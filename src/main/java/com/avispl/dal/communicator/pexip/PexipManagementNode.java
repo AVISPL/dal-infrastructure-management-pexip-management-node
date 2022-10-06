@@ -1,11 +1,12 @@
 /*
- * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.dal.communicator.pexip;
 
 import com.avispl.dal.communicator.dto.reports.ReportWrapper;
 import com.avispl.dal.communicator.dto.api.entities.ManagementNodeResponse;
 import com.avispl.dal.communicator.dto.api.conferences.Conference;
+import com.avispl.dal.communicator.statistics.DynamicStatisticsDefinitions;
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
@@ -75,8 +76,22 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     private static final String COMMAND_DISCONNECT_PARTICIPANT = "command/v1/participant/disconnect/";
     private static final String COMMAND_DISCONNECT_CONFERENCE = "command/v1/conference/disconnect/";
+    private static final String LICENSING_LOGS = "Logs#LicensingLogs";
+    private static final String HISTORICAL_LOGS = "Logs#HistoricalLogs";
+    private static final String DAYS_BACK_LOGS = "Logs#DaysBack";
+    private static final String STATISTIC_LOGS = "Logs#StatisticLogs";
 
     private static final String OBJECTS = "objects";
+
+    /**
+     * CSV string of values, defining the set of historical properties
+     */
+    private String historicalProperties;
+
+    /**
+     * default limit for using as a query string parameter for pexip api requests
+     */
+    private final int RESPONSE_LIMIT = 5000;
 
     /*TODO: OTJ for v2:*/
     /*
@@ -85,29 +100,30 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private static final String ONE_TOUCH_JOIN_MEETINGS_PER_ENDPOINT_URI = "status/v1/mjx_meeting/?endpoint_name=%s"; //
     */
 
+    /**SMTP settings*/
     private int smtpPort = 25;
     private String smtpHost;
     private String smtpUsername;
     private String smtpPassword;
     private String smtpSender;
 
+    /**csv list of email addresses to email reports to*/
+    private String emailReportsRecipients;
+    /**days back period for historical statistics reports*/
     private int daysBackReports = 1;
+    /**whether or not conferences statistics should be displayed on the conferencing nodes at runtime*/
     private boolean displayConferencesStatistics = false;
 
-    private String emailReportsRecipients;
-    private JavaMailSender mailSender;
-    private final int RESPONSE_LIMIT = 5000;
-
-    /**
-     * Device adapter instantiation timestamp.
-     */
+    /**Device adapter instantiation timestamp.*/
     private long adapterInitializationTimestamp;
-    /*Name:ID pair to lookup id for specific control actions*/
+    /**Name:ID pair to lookup id for specific control actions*/
     private Map<String, String> knownConferences = new HashMap<>();
     private Map<String, String> knownParticipants = new HashMap<>();
+    /**adapter properties, containing its metadata (built date, version etc)*/
+    private Properties properties = new Properties();
 
     private AggregatedDeviceProcessor aggregatedDeviceProcessor;
-    Properties properties = new Properties();
+    private JavaMailSender mailSender;
 
     /*
      * Historical:
@@ -133,9 +149,10 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         List<Statistics> statistics = new ArrayList<>();
         ExtendedStatistics extendedStatistics = new ExtendedStatistics();
         statistics.add(extendedStatistics);
-        /*After 5.2 dynamicStatistics support should be added*/
-//        Map<String, String> dynamicStatistics = new HashMap<>();
         Map<String, String> staticStatistics = new HashMap<>();
+        Map<String, String> dynamicStatistics = new HashMap<>();
+        extendedStatistics.setStatistics(staticStatistics);
+        extendedStatistics.setDynamicStatistics(dynamicStatistics);
 
         staticStatistics.put("AdapterVersion", properties.getProperty("pexip.aggregator.version"));
         staticStatistics.put("AdapterBuildDate", properties.getProperty("pexip.aggregator.build.date"));
@@ -143,27 +160,25 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
         List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
         if (smtpDataProvided()) {
-            staticStatistics.put("Export#LicensingReport", "");
-            staticStatistics.put("Export#HistoricalReport", "");
-            staticStatistics.put("Export#DaysBack", "");
-            staticStatistics.put("Export#TotalStatistics", "");
-            controllableProperties.add(createNumber("Export#DaysBack", daysBackReports));
-            controllableProperties.add(createButton("Export#TotalStatistics", "Export", "Exporting", 0L));
-            controllableProperties.add(createButton("Export#HistoricalReport", "Export", "Exporting", 0L));
-            controllableProperties.add(createButton("Export#LicensingReport", "Export", "Exporting", 0L));
+            staticStatistics.put(LICENSING_LOGS, "");
+            staticStatistics.put(HISTORICAL_LOGS, "");
+            staticStatistics.put(DAYS_BACK_LOGS, String.valueOf(daysBackReports));
+            staticStatistics.put(STATISTIC_LOGS, "");
+            controllableProperties.add(createNumber(DAYS_BACK_LOGS, daysBackReports));
+            controllableProperties.add(createButton(STATISTIC_LOGS, "Email Logs", "Sending Email", 0L));
+            controllableProperties.add(createButton(HISTORICAL_LOGS, "Email Logs", "Sending Email", 0L));
+            controllableProperties.add(createButton(LICENSING_LOGS, "Email Logs", "Sending Email", 0L));
         }
 
         JsonNode response = doGet(LICENSING_URI, JsonNode.class);
         ArrayNode licensingData = (ArrayNode) response.get(OBJECTS);
         if (licensingData != null && !licensingData.isEmpty()) {
-            /* After 5.2 will be changed to Map<String, String> dynamicStatistics = new HashMap<>(); */
-            AggregatedDevice licensingStatistics = new AggregatedDevice();
-            aggregatedDeviceProcessor.applyProperties(licensingStatistics, licensingData.get(0), "NodeLicensing");
-            Map<String, String> dynamicProperties = licensingStatistics.getProperties();
-            extendedStatistics.setDynamicStatistics(dynamicProperties);
+            Map<String, String> tmpStatistics = new HashMap<>();
+            aggregatedDeviceProcessor.applyProperties(tmpStatistics, licensingData.get(0), "NodeLicensing");
+            provisionTypedStatistics(tmpStatistics, extendedStatistics);
         }
 
-        extendedStatistics.setStatistics(staticStatistics);
+
         extendedStatistics.setControllableProperties(controllableProperties);
 
         return statistics;
@@ -341,39 +356,57 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         this.displayConferencesStatistics = displayConferencesStatistics;
     }
 
+    /**
+     * Retrieves {@link #historicalProperties}
+     *
+     * @return value of {@link #historicalProperties}
+     */
+    public String getHistoricalProperties() {
+        return historicalProperties;
+    }
+
+    /**
+     * Sets {@link #historicalProperties} value
+     *
+     * @param historicalProperties new value of {@link #historicalProperties}
+     */
+    public void setHistoricalProperties(String historicalProperties) {
+        this.historicalProperties = historicalProperties;
+    }
+
     @Override
     public void controlProperty(ControllableProperty controllableProperty) throws Exception {
         String property = controllableProperty.getProperty();
         String value = String.valueOf(controllableProperty.getValue());
 
-        if (property.equals("Export#LicensingReport")) {
+        if (property.equals(LICENSING_LOGS)) {
             JsonNode response = doGet(LICENSING_URI, JsonNode.class);
             ArrayNode licensingData = (ArrayNode) response.get(OBJECTS);
             if (licensingData != null && !licensingData.isEmpty()) {
                 /* After 5.2 will be changed to Map<String, String> report = new HashMap<>(); */
                 AggregatedDevice report = new AggregatedDevice();
                 aggregatedDeviceProcessor.applyProperties(report, licensingData.get(0), "NodeLicensingReport");
-                sendReportsEmail("licensing_report", report.getProperties());
+                sendReportsEmail("licensing_logs", report.getProperties());
             } else {
                 throw new RuntimeException("Empty licensing data response, unable to compose a licensing report");
             }
-        } else if (property.equals("Export#HistoricalReport")) {
+        } else if (property.equals(HISTORICAL_LOGS)) {
             retrieveHistoricalInfo();
-        } else if (property.equals("Export#DaysBack")) {
+        } else if (property.equals(DAYS_BACK_LOGS)) {
             int daysBackValue = Integer.parseInt(value);
             if (daysBackValue < 0) {
                 throw new IllegalArgumentException("Invalid daysBackReports value. Must be positive number.");
             }
             daysBackReports = daysBackValue;
-        } else if (property.endsWith("Disconnect") || property.startsWith("Export") || property.endsWith("ExportParticipants")) {
+        } else if (property.endsWith("Disconnect") || property.startsWith("Logs") || property.endsWith("ParticipantLogs")) {
             String key = property.substring(property.indexOf(":") + 1, property.indexOf("#"));
             if (property.startsWith("Conference") && property.endsWith("Disconnect")) {
                 disconnectConference(knownConferences.get(key));
             } else if (property.startsWith("Participant")) {
                 disconnectParticipant(knownParticipants.get(key));
-            } else if (property.endsWith("Export#TotalStatistics")) {
+            } else if (property.endsWith(STATISTIC_LOGS)) {
                 sendReportsEmail("avg_monthly", buildMajorNodeReport());
-            } else if (property.endsWith("ExportParticipants")) {
+            } else if (property.endsWith("ParticipantLogs")) {
                 sendReportsEmail(Collections.singletonList(new ReportWrapper(("participants_" + LocalDateTime.now()).replaceAll(":", "-"), retrieveParticipants(key))));
             }
         }
@@ -416,6 +449,33 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     @Override
     protected void authenticate() throws Exception {
+    }
+
+    /**
+     * Add a property as a regular statistics property, or as dynamic one, based on the {@link #historicalProperties} configuration
+     * and DynamicStatisticsDefinitions static definitions.
+     *
+     * @param statistics map of regular statistics
+     * @param extendedStatistics to add properties to
+     * */
+    private void provisionTypedStatistics(Map<String, String> statistics, ExtendedStatistics extendedStatistics) {
+        Map<String, String> dynamicStatistics = extendedStatistics.getDynamicStatistics();
+        Map<String, String> staticStatistics = extendedStatistics.getStatistics();
+        statistics.forEach((propertyName, propertyValue) -> {
+            boolean propertyListed = false;
+            if (!StringUtils.isNullOrEmpty(historicalProperties)) {
+                if (propertyName.contains("#")) {
+                    propertyListed = historicalProperties.contains(propertyName.split("#")[1]);
+                } else {
+                    propertyListed = historicalProperties.contains(propertyName);
+                }
+            }
+            if (propertyListed && DynamicStatisticsDefinitions.checkIfExists(propertyName)) {
+                dynamicStatistics.put(propertyName, propertyValue);
+            } else {
+                staticStatistics.put(propertyName, propertyValue);
+            }
+        });
     }
 
     /**
@@ -562,8 +622,8 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             });
         }
 
-        ReportWrapper conferencesReportWrapper = new ReportWrapper(String.format("conferences_report_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), conferencesReport);
-        ReportWrapper participantsReportWrapper = new ReportWrapper(String.format("participants_report_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), participantsReport);
+        ReportWrapper conferencesReportWrapper = new ReportWrapper(String.format("conferences_logs_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), conferencesReport);
+        ReportWrapper participantsReportWrapper = new ReportWrapper(String.format("participants_logs_%s_%s", currentDateTime.minusDays(daysBackReports), currentDateTime), participantsReport);
 
         sendReportsEmail(Arrays.asList(conferencesReportWrapper, participantsReportWrapper));
     }
@@ -598,10 +658,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         if (conferencingNodesConfigObjects != null && !conferencingNodesConfigObjects.isEmpty()) {
             Map<String, Map<String, String>> configurations = new HashMap<>();
             conferencingNodesConfigObjects.forEach(node -> {
-                /* After 5.2 will be changed to Map<String, String> conferenceNodesConfig = new HashMap<>(); */
-                AggregatedDevice conferenceNodesConfig = new AggregatedDevice();
+                Map<String, String> conferenceNodesConfig = new HashMap<>();
                 aggregatedDeviceProcessor.applyProperties(conferenceNodesConfig, node, "ConferencingNodesConfig");
-                configurations.put(conferenceNodesConfig.getProperties().get("Configuration#Name"), conferenceNodesConfig.getProperties());
+                configurations.put(conferenceNodesConfig.get("Configuration#Name"), conferenceNodesConfig);
             });
 
             devices.forEach(aggregatedDevice -> aggregatedDevice.getProperties().putAll(configurations.get(aggregatedDevice.getDeviceName())));
@@ -612,8 +671,6 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             ExtendedStatistics extendedStatistics = new ExtendedStatistics();
             statistics.add(extendedStatistics);
             extendedStatistics.setStatistics(aggregatedDevice.getProperties());
-            /*TODO: apply when SY v5.2 is out*/
-            //extendedStatistics.setDynamicStatistics(aggregatedDevice.getDynamicStatistics());
             aggregatedDevice.setMonitoredStatistics(statistics);
         });
         return devices;
@@ -731,9 +788,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
                         "Disconnect", "Disconnecting", 0L));
 
                 if (smtpDataProvided()) {
-                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ExportParticipants", "");
-                    aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ExportParticipants",
-                            "Export", "Exporting", 0L));
+                    aggregatedDevice.getProperties().put("Conference:" + groupPrefix + "#" + "ParticipantLogs", "");
+                    aggregatedDevice.getControllableProperties().add(createButton("Conference:" + groupPrefix + "#" + "ParticipantLogs",
+                            "Email Logs", "Sending Email", 0L));
                 }
             });
         });
@@ -782,7 +839,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private void sendReportsEmail(List<ReportWrapper> reports) throws MessagingException, IOException {
         List<File> files = new ArrayList<>();
         try {
-            MimeMessageHelper helper = prepareMimeMessageHelper("Reports");
+            MimeMessageHelper helper = prepareMimeMessageHelper("Logs");
 
             for (ReportWrapper reportWrapper : reports) {
                 String reportFileName = reportWrapper.getReportName() + ".csv";
@@ -860,7 +917,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      * @throws IOException        if any csv file related error occurs (no space left, unable to create/remove file, etc)
      */
     private void sendReportsEmail(String name, Map<String, String> report) throws MessagingException, IOException {
-        MimeMessageHelper helper = prepareMimeMessageHelper("Reports");
+        MimeMessageHelper helper = prepareMimeMessageHelper("Logs");
         File file = null;
         try {
             file = new File(name + ".csv");
@@ -905,7 +962,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         helper.setFrom(smtpSender);
         helper.setTo(emailRecipients);
         helper.setSubject(subject);
-        helper.setText("Please see reports in attachments");
+        helper.setText("Please see logs in attachments");
 
         return helper;
     }
