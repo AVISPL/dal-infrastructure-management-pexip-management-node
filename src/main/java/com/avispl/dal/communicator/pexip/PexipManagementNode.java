@@ -84,9 +84,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private static final String OBJECTS = "objects";
 
     /**
-     * CSV string of values, defining the set of historical properties
+     * CSV string of values, defining the set of historical properties, kept as set locally
      */
-    private String historicalProperties;
+    private Set<String> historicalProperties = new HashSet<>();
 
     /**
      * default limit for using as a query string parameter for pexip api requests
@@ -362,7 +362,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      * @return value of {@link #historicalProperties}
      */
     public String getHistoricalProperties() {
-        return historicalProperties;
+        return String.join(",", this.historicalProperties);
     }
 
     /**
@@ -371,7 +371,10 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      * @param historicalProperties new value of {@link #historicalProperties}
      */
     public void setHistoricalProperties(String historicalProperties) {
-        this.historicalProperties = historicalProperties;
+        this.historicalProperties.clear();
+        Arrays.asList(historicalProperties.split(",")).forEach(propertyName -> {
+            this.historicalProperties.add(propertyName.trim());
+        });
     }
 
     @Override
@@ -463,7 +466,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         Map<String, String> staticStatistics = extendedStatistics.getStatistics();
         statistics.forEach((propertyName, propertyValue) -> {
             boolean propertyListed = false;
-            if (!StringUtils.isNullOrEmpty(historicalProperties)) {
+            if (!historicalProperties.isEmpty()) {
                 if (propertyName.contains("#")) {
                     propertyListed = historicalProperties.contains(propertyName.split("#")[1]);
                 } else {
