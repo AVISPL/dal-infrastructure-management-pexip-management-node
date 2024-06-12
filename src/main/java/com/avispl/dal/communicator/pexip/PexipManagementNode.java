@@ -1,11 +1,12 @@
 /*
- * Copyright (c) 2021 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2022 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.dal.communicator.pexip;
 
 import com.avispl.dal.communicator.dto.reports.ReportWrapper;
 import com.avispl.dal.communicator.dto.api.entities.ManagementNodeResponse;
 import com.avispl.dal.communicator.dto.api.conferences.Conference;
+import com.avispl.dal.communicator.statistics.DynamicStatisticsDefinitions;
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
@@ -47,14 +48,17 @@ import java.util.stream.Collectors;
  * Device Aggregator communicator for Pexip Management Node
  * <p>
  * Main features (v1):
- * - Conferencing Nodes are provisioned as Aggregated Devices
- * - Conferencing Nodes extended properties keep track of conferencing node status and configuration
- * - Conferencing Nodes keep track of all active conferences at a runtime
- * - Conferencing Nodes have an option to disconnect a specific meeting
- * - Conferencing Nodes have an option of exporting list of active conference's participants as csv over email (requires SMTP setup)
- * - Management Node extended properties contain licensing information and port data
- * - Management Node has extra options of exporting licencing reports, since-date reports and monthly reports over email (requires SMTP setup)
- *
+ * <pre>
+ * <ul>
+ *     <li>- Conferencing Nodes are provisioned as Aggregated Devices</li>
+ *     <li>- Conferencing Nodes extended properties keep track of conferencing node status and configuration</li>
+ *     <li>- Conferencing Nodes keep track of all active conferences at a runtime</li>
+ *     <li>- Conferencing Nodes have an option to disconnect a specific meeting</li>
+ *     <li>- Conferencing Nodes have an option of exporting list of active conference's participants as csv over email (requires SMTP setup)</li>
+ *     <li>- Management Node extended properties contain licensing information and port data</li>
+ *     <li>- Management Node has extra options of exporting licencing reports, since-date reports and monthly reports over email (requires SMTP setup)</li>
+ * </ul>
+ * </pre>
  * @author Maksym.Rossiytsev
  * @since Symphony 5.1
  */
@@ -79,7 +83,14 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     private static final String OBJECTS = "objects";
 
-    /*default limit for using as a query string parameter for pexip api requests*/
+    /**
+     * CSV string of values, defining the set of historical properties, kept as set locally
+     */
+    private Set<String> historicalProperties = new HashSet<>();
+
+    /**
+     * default limit for using as a query string parameter for pexip api requests
+     */
     private final int RESPONSE_LIMIT = 5000;
 
     /*TODO: OTJ for v2:*/
@@ -89,26 +100,26 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     private static final String ONE_TOUCH_JOIN_MEETINGS_PER_ENDPOINT_URI = "status/v1/mjx_meeting/?endpoint_name=%s"; //
     */
 
-    /*SMTP settings*/
+    /**SMTP settings*/
     private int smtpPort = 25;
     private String smtpHost;
     private String smtpUsername;
     private String smtpPassword;
     private String smtpSender;
 
-    /*csv list of email addresses to email reports to*/
+    /**csv list of email addresses to email reports to*/
     private String emailReportsRecipients;
-    /*days back period for historical statistics reports*/
+    /**days back period for historical statistics reports*/
     private int daysBackReports = 1;
-    /*whether or not conferences statistics should be displayed on the conferencing nodes at runtime*/
+    /**whether or not conferences statistics should be displayed on the conferencing nodes at runtime*/
     private boolean displayConferencesStatistics = false;
 
-    /*Device adapter instantiation timestamp.*/
+    /**Device adapter instantiation timestamp.*/
     private long adapterInitializationTimestamp;
-    /*Name:ID pair to lookup id for specific control actions*/
+    /**Name:ID pair to lookup id for specific control actions*/
     private Map<String, String> knownConferences = new HashMap<>();
     private Map<String, String> knownParticipants = new HashMap<>();
-    /*adapter properties, containing its metadata (built date, version etc)*/
+    /**adapter properties, containing its metadata (built date, version etc)*/
     private Properties properties = new Properties();
 
     private AggregatedDeviceProcessor aggregatedDeviceProcessor;
@@ -128,14 +139,20 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
      *   $mgr_meet = "https://" + $mgr_host + "/api/admin/status/v1/mjx_meeting/"
      * */
 
+    public PexipManagementNode (){
+        setBaseUri(BASE_URI);
+        setTrustAllCertificates(true);
+    }
+
     @Override
     public List<Statistics> getMultipleStatistics() throws Exception {
         List<Statistics> statistics = new ArrayList<>();
         ExtendedStatistics extendedStatistics = new ExtendedStatistics();
         statistics.add(extendedStatistics);
-        /*After 5.2 dynamicStatistics support should be added*/
-//        Map<String, String> dynamicStatistics = new HashMap<>();
         Map<String, String> staticStatistics = new HashMap<>();
+        Map<String, String> dynamicStatistics = new HashMap<>();
+        extendedStatistics.setStatistics(staticStatistics);
+        extendedStatistics.setDynamicStatistics(dynamicStatistics);
 
         staticStatistics.put("AdapterVersion", properties.getProperty("pexip.aggregator.version"));
         staticStatistics.put("AdapterBuildDate", properties.getProperty("pexip.aggregator.build.date"));
@@ -156,14 +173,12 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         JsonNode response = doGet(LICENSING_URI, JsonNode.class);
         ArrayNode licensingData = (ArrayNode) response.get(OBJECTS);
         if (licensingData != null && !licensingData.isEmpty()) {
-            /* After 5.2 will be changed to Map<String, String> dynamicStatistics = new HashMap<>(); */
-            AggregatedDevice licensingStatistics = new AggregatedDevice();
-            aggregatedDeviceProcessor.applyProperties(licensingStatistics, licensingData.get(0), "NodeLicensing");
-            Map<String, String> dynamicProperties = licensingStatistics.getProperties();
-            extendedStatistics.setDynamicStatistics(dynamicProperties);
+            Map<String, String> tmpStatistics = new HashMap<>();
+            aggregatedDeviceProcessor.applyProperties(tmpStatistics, licensingData.get(0), "NodeLicensing");
+            provisionTypedStatistics(tmpStatistics, extendedStatistics);
         }
 
-        extendedStatistics.setStatistics(staticStatistics);
+
         extendedStatistics.setControllableProperties(controllableProperties);
 
         return statistics;
@@ -171,11 +186,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     @Override
     protected void internalInit() throws Exception {
-        adapterInitializationTimestamp = System.currentTimeMillis();
-        setBaseUri(BASE_URI);
-        setTrustAllCertificates(true);
         super.internalInit();
 
+        adapterInitializationTimestamp = System.currentTimeMillis();
         Map<String, PropertiesMapping> mapping = new PropertiesMappingParser().loadYML("mapping/model-mapping.yml", getClass());
         aggregatedDeviceProcessor = new AggregatedDeviceProcessor(mapping);
         properties.load(getClass().getResourceAsStream("/version.properties"));
@@ -188,7 +201,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         }
     }
 
-    private boolean smtpDataProvided(){
+    private boolean smtpDataProvided() {
         return !StringUtils.isNullOrEmpty(smtpHost) && !StringUtils.isNullOrEmpty(smtpSender);
     }
 
@@ -203,15 +216,15 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         final JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(smtpHost);
         sender.setPort(smtpPort);
-        if(!StringUtils.isNullOrEmpty(smtpUsername)) {
+        if (!StringUtils.isNullOrEmpty(smtpUsername)) {
             sender.setUsername(smtpUsername);
-        } else if(logger.isInfoEnabled()) {
+        } else if (logger.isInfoEnabled()) {
             logger.info("SMTP Username is not set.");
         }
 
-        if(!StringUtils.isNullOrEmpty(smtpPassword)) {
+        if (!StringUtils.isNullOrEmpty(smtpPassword)) {
             sender.setPassword(smtpPassword);
-        } else if(logger.isInfoEnabled()) {
+        } else if (logger.isInfoEnabled()) {
             logger.info("SMTP Password is not set.");
         }
         return sender;
@@ -343,6 +356,27 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         this.displayConferencesStatistics = displayConferencesStatistics;
     }
 
+    /**
+     * Retrieves {@link #historicalProperties}
+     *
+     * @return value of {@link #historicalProperties}
+     */
+    public String getHistoricalProperties() {
+        return String.join(",", this.historicalProperties);
+    }
+
+    /**
+     * Sets {@link #historicalProperties} value
+     *
+     * @param historicalProperties new value of {@link #historicalProperties}
+     */
+    public void setHistoricalProperties(String historicalProperties) {
+        this.historicalProperties.clear();
+        Arrays.asList(historicalProperties.split(",")).forEach(propertyName -> {
+            this.historicalProperties.add(propertyName.trim());
+        });
+    }
+
     @Override
     public void controlProperty(ControllableProperty controllableProperty) throws Exception {
         String property = controllableProperty.getProperty();
@@ -363,7 +397,7 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             retrieveHistoricalInfo();
         } else if (property.equals(DAYS_BACK_LOGS)) {
             int daysBackValue = Integer.parseInt(value);
-            if(daysBackValue < 0) {
+            if (daysBackValue < 0) {
                 throw new IllegalArgumentException("Invalid daysBackReports value. Must be positive number.");
             }
             daysBackReports = daysBackValue;
@@ -418,6 +452,33 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
 
     @Override
     protected void authenticate() throws Exception {
+    }
+
+    /**
+     * Add a property as a regular statistics property, or as dynamic one, based on the {@link #historicalProperties} configuration
+     * and DynamicStatisticsDefinitions static definitions.
+     *
+     * @param statistics map of regular statistics
+     * @param extendedStatistics to add properties to
+     * */
+    private void provisionTypedStatistics(Map<String, String> statistics, ExtendedStatistics extendedStatistics) {
+        Map<String, String> dynamicStatistics = extendedStatistics.getDynamicStatistics();
+        Map<String, String> staticStatistics = extendedStatistics.getStatistics();
+        statistics.forEach((propertyName, propertyValue) -> {
+            boolean propertyListed = false;
+            if (!historicalProperties.isEmpty()) {
+                if (propertyName.contains("#")) {
+                    propertyListed = historicalProperties.contains(propertyName.split("#")[1]);
+                } else {
+                    propertyListed = historicalProperties.contains(propertyName);
+                }
+            }
+            if (propertyListed && DynamicStatisticsDefinitions.checkIfExists(propertyName)) {
+                dynamicStatistics.put(propertyName, propertyValue);
+            } else {
+                staticStatistics.put(propertyName, propertyValue);
+            }
+        });
     }
 
     /**
@@ -600,10 +661,9 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
         if (conferencingNodesConfigObjects != null && !conferencingNodesConfigObjects.isEmpty()) {
             Map<String, Map<String, String>> configurations = new HashMap<>();
             conferencingNodesConfigObjects.forEach(node -> {
-                /* After 5.2 will be changed to Map<String, String> conferenceNodesConfig = new HashMap<>(); */
-                AggregatedDevice conferenceNodesConfig = new AggregatedDevice();
+                Map<String, String> conferenceNodesConfig = new HashMap<>();
                 aggregatedDeviceProcessor.applyProperties(conferenceNodesConfig, node, "ConferencingNodesConfig");
-                configurations.put(conferenceNodesConfig.getProperties().get("Configuration#Name"), conferenceNodesConfig.getProperties());
+                configurations.put(conferenceNodesConfig.get("Configuration#Name"), conferenceNodesConfig);
             });
 
             devices.forEach(aggregatedDevice -> aggregatedDevice.getProperties().putAll(configurations.get(aggregatedDevice.getDeviceName())));
@@ -614,8 +674,6 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
             ExtendedStatistics extendedStatistics = new ExtendedStatistics();
             statistics.add(extendedStatistics);
             extendedStatistics.setStatistics(aggregatedDevice.getProperties());
-            /*TODO: apply when SY v5.2 is out*/
-            //extendedStatistics.setDynamicStatistics(aggregatedDevice.getDynamicStatistics());
             aggregatedDevice.setMonitoredStatistics(statistics);
         });
         return devices;
