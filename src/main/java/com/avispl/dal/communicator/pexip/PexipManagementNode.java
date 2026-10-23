@@ -23,18 +23,14 @@ import com.avispl.symphony.dal.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.RestTemplate;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -969,18 +965,5 @@ public class PexipManagementNode extends RestCommunicator implements Monitorable
     public List<AggregatedDevice> retrieveMultipleStatistics(List<String> list) throws Exception {
         return retrieveMultipleStatistics().stream().filter(s ->
                 list.contains(s.getDeviceId())).collect(Collectors.toList());
-    }
-
-    @Override
-    protected RestTemplate obtainRestTemplate() throws Exception {
-        RestTemplate restTemplate = super.obtainRestTemplate();
-
-        List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
-        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-        converter.setSupportedMediaTypes(Collections.singletonList(MediaType.APPLICATION_JSON));
-        messageConverters.add(converter);
-        restTemplate.setMessageConverters(messageConverters);
-
-        return restTemplate;
     }
 }
